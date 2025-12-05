@@ -4,25 +4,22 @@ import os
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from data.database import init_db
-from handlers import common, expenses, statistics
+from handlers import common, expenses, statistics, export 
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
 async def main():
-    # 1. Init Database
     await init_db()
 
-    # 2. Setup Bot & Dispatcher
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
 
-    # 3. Register Routers
     dp.include_router(common.router)
     dp.include_router(expenses.router)
     dp.include_router(statistics.router)
+    dp.include_router(export.router)
 
-    # 4. Start Polling
     print("Bot is running...")
     await dp.start_polling(bot)
 
