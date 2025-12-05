@@ -33,6 +33,9 @@ def get_delete_keyboard(expenses):
 def get_export_keyboard():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📄 Download Receipt (PDF)", callback_data="download_pdf")]
+            [
+                InlineKeyboardButton(text="📄 PDF Receipt", callback_data="download_pdf"),
+                InlineKeyboardButton(text="📊 Excel Report", callback_data="download_excel")
+            ]
         ]
     )

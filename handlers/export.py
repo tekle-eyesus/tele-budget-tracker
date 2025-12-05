@@ -1,8 +1,10 @@
+import io
+import pandas as pd
 from aiogram import Router, types, F
 from sqlalchemy import select
 from data.database import AsyncSessionLocal, Expense
 from utils.keyboards import get_export_keyboard
-from utils.pdf_generator import generate_receipt_pdf # Import our new tool
+from utils.pdf_generator import generate_receipt_pdf
 
 router = Router()
 
@@ -42,4 +44,42 @@ async def send_pdf_receipt(callback: types.CallbackQuery):
     await callback.message.answer_document(
         document=input_file,
         caption="🧾 Here is your expense receipt."
+    )
+
+@router.callback_query(F.data == "download_excel")
+async def send_excel_report(callback: types.CallbackQuery):
+    await callback.answer("Generating Excel...")
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(Expense).where(Expense.user_id == callback.from_user.id).order_by(Expense.timestamp.desc())
+        )
+        expenses = result.scalars().all()
+
+    if not expenses:
+        await callback.message.answer("⚠️ No data found.")
+        return
+
+    data = [
+        {
+            "Date": ex.timestamp.strftime("%Y-%m-%d %H:%M"),
+            "Category": ex.category,
+            "Amount": ex.amount,
+            "ID": ex.id
+        }
+        for ex in expenses
+    ]
+    df = pd.DataFrame(data)
+
+    output = io.BytesIO()
+    # using 'openpyxl' engine to write .xlsx
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name="Expenses")
+    
+    output.seek(0)
+
+    input_file = types.BufferedInputFile(output.read(), filename="expenses_report.xlsx")
+    await callback.message.answer_document(
+        document=input_file, 
+        caption="📊 Here is your Excel report. You can open this in Google Sheets or Excel."
     )
