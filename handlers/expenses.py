@@ -10,6 +10,7 @@ router = Router()
 class AddExpenseState(StatesGroup):
     waiting_for_amount = State()
     waiting_for_category = State()
+    waiting_for_custom_category = State()
 
 @router.message(F.text == "💸 Add Expense")
 async def start_add_expense(message: types.Message, state: FSMContext):
@@ -28,12 +29,27 @@ async def process_amount(message: types.Message, state: FSMContext):
 
 @router.message(AddExpenseState.waiting_for_category)
 async def process_category(message: types.Message, state: FSMContext):
+    if message.text == "✏️ Custom":
+        await message.answer("Please type your custom category name:", reply_markup=types.ReplyKeyboardRemove())
+        await state.set_state(AddExpenseState.waiting_for_custom_category)
+        return
+    await save_expense(message, state, category_name=message.text)
+
+
+@router.message(AddExpenseState.waiting_for_custom_category)
+async def process_custom_category(message: types.Message, state: FSMContext):
+    await save_expense(message, state, category_name=message.text)
+
+async def save_expense(message: types.Message, state: FSMContext, category_name: str):
     data = await state.get_data()
+    amount = data['amount']
+
     async with AsyncSessionLocal() as session:
-        new_expense = Expense(user_id=message.from_user.id, amount=data['amount'], category=message.text)
+        new_expense = Expense(user_id=message.from_user.id, amount=amount, category=category_name)
         session.add(new_expense)
         await session.commit()
-    await message.answer(f"✅ Saved: ${data['amount']}", reply_markup=get_main_menu())
+
+    await message.answer(f"✅ Saved: ${amount} for {category_name}", reply_markup=get_main_menu())
     await state.clear()
 
 @router.message(F.text == "📜 History")

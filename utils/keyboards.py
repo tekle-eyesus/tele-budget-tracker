@@ -19,6 +19,7 @@ def get_main_menu():
 def get_category_keyboard():
     categories = ["Food", "Transport", "Shopping", "Bills", "Other"]
     keyboard = [[KeyboardButton(text=c) for c in categories[i:i+2]] for i in range(0, len(categories), 2)]
+    keyboard.append([KeyboardButton(text="✏️ Custom")])
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 def get_delete_keyboard(expenses):
