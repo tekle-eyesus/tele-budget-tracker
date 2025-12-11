@@ -40,3 +40,16 @@ def get_export_keyboard():
             ]
         ]
     )
+
+def get_stats_period_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="📅 This Month", callback_data="stats_current"),
+                InlineKeyboardButton(text="🗓 Last Month", callback_data="stats_previous")
+            ],
+            [
+                InlineKeyboardButton(text="∞ All Time", callback_data="stats_all")
+            ]
+        ]
+    )
