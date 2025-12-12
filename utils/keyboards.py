@@ -11,7 +11,7 @@ def get_main_menu():
         keyboard=[
             [KeyboardButton(text="💸 Add Expense"), KeyboardButton(text="📊 Stats")],
             [KeyboardButton(text="📜 History"), KeyboardButton(text="🗑 Delete")],
-            [KeyboardButton(text="📥 Export")] 
+            [KeyboardButton(text="🎯 Set Budget"), KeyboardButton(text="📥 Export")]  
         ],
         resize_keyboard=True
     )

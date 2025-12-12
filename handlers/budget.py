@@ -1,44 +1,53 @@
-from aiogram import Router, types
-from aiogram.filters import Command
+from aiogram import Router, types, F
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy import select
 from data.database import AsyncSessionLocal, User
+from utils.keyboards import get_main_menu
 
 router = Router()
 
-@router.message(Command("budget"))
-async def set_budget_command(message: types.Message):
-    """
-    Usage: /budget 500
-    Sets the monthly budget limit for the user.
-    """
-    args = message.text.split()
-    
-    # Validation: Did they provide a number?
-    if len(args) != 2:
-        await message.answer("⚠️ Usage: `/budget 500` (Replace 500 with your limit)")
+class BudgetState(StatesGroup):
+    waiting_for_amount = State()
+
+@router.message(F.text == "🎯 Set Budget")
+async def start_set_budget(message: types.Message, state: FSMContext):
+    await message.answer(
+        "Please enter your monthly budget target (e.g., 500 or 1000):", 
+        reply_markup=types.ReplyKeyboardRemove() # Hide menu temporarily
+    )
+    await state.set_state(BudgetState.waiting_for_amount)
+
+@router.message(BudgetState.waiting_for_amount)
+async def process_budget_amount(message: types.Message, state: FSMContext):
+    try:
+        limit = float(message.text)
+    except ValueError:
+        await message.answer("❌ That doesn't look like a number. Please try again (e.g., 1000).")
         return
 
-    try:
-        limit = float(args[1])
-    except ValueError:
-        await message.answer("❌ Please enter a valid number.")
+    if limit < 0:
+        await message.answer("❌ Budget cannot be negative.")
         return
 
     user_id = message.from_user.id
-
     async with AsyncSessionLocal() as session:
-        # Check if user exists in DB
         result = await session.execute(select(User).where(User.user_id == user_id))
         user = result.scalar_one_or_none()
 
         if user:
-            # Update existing
             user.budget_limit = limit
         else:
-            # Create new
             user = User(user_id=user_id, budget_limit=limit)
             session.add(user)
         
         await session.commit()
 
-    await message.answer(f"✅ Monthly Budget set to: <b>${limit:,.2f}</b>", parse_mode="HTML")
+    await message.answer(
+        f"✅ Monthly Budget updated to: <b>${limit:,.2f}</b>\n"
+        "Go to '📊 Stats' to see your progress!",
+        reply_markup=get_main_menu(), # Bring back the menu
+        parse_mode="HTML"
+    )
+    
+    await state.clear()
