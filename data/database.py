@@ -21,6 +21,13 @@ AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=As
 class Base(DeclarativeBase):
     pass
 
+class User(Base):
+    __tablename__ = "users"
+
+    # Telegram User ID as the Primary Key
+    user_id: Mapped[int] = mapped_column(Integer, primary_key=True) 
+    budget_limit: Mapped[float] = mapped_column(Float, default=0.0)
+
 class Expense(Base):
     __tablename__ = "expenses"
 
