@@ -1,6 +1,6 @@
+from aiogram import Router, types, F
 import calendar
 from datetime import datetime
-from aiogram import Router, types, F
 from sqlalchemy import select
 from data.database import AsyncSessionLocal, Expense, User
 

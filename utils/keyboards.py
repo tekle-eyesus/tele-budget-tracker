@@ -9,9 +9,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 def get_main_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="💸 Add Expense"), KeyboardButton(text="📊 Stats")],
-            [KeyboardButton(text="📜 History"), KeyboardButton(text="🗑 Delete")],
-            [KeyboardButton(text="🎯 Set Budget"), KeyboardButton(text="📥 Export")]  
+            [KeyboardButton(text="💸 Add Expense")], 
+            [KeyboardButton(text="📊 Stats"), KeyboardButton(text="🔮 Forecast")],
+            [KeyboardButton(text="📜 History"), KeyboardButton(text="🗑 Delete")],     
+            [KeyboardButton(text="🎯 Set Budget"), KeyboardButton(text="📥 Export")]
         ],
         resize_keyboard=True
     )
