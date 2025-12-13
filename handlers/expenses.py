@@ -1,3 +1,4 @@
+import re
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -115,3 +116,45 @@ async def process_delete_callback(callback: types.CallbackQuery):
             await callback.message.edit_text("❌ Expense not found (already deleted?).")
     
     await callback.answer() 
+
+
+@router.message(F.text)
+async def smart_add_expense(message: types.Message, state: FSMContext):
+    """
+    Catches any text that hasn't been handled by buttons or commands.
+    Tries to parse: "15 Food" or "Taxi 20".
+    """
+    text = message.text.strip()
+    #  Number then Text (e.g. "15.50 Lunch")
+    pattern1 = r"^(\d+(?:\.\d+)?)\s+(.+)$"
+    # Text then Number (e.g. "Lunch 15.50")
+    pattern2 = r"^(.+)\s+(\d+(?:\.\d+)?)$"
+
+    match1 = re.match(pattern1, text)
+    match2 = re.match(pattern2, text)
+
+    amount = 0.0
+    category = ""
+
+    if match1:
+        amount = float(match1.group(1))
+        category = match1.group(2).strip()
+    elif match2:
+        category = match2.group(1).strip()
+        amount = float(match2.group(2))
+    else:
+        return 
+
+    # Capitalize category for consistency (e.g. "food" -> "Food")
+    category = category.title()
+
+    async with AsyncSessionLocal() as session:
+        new_expense = Expense(user_id=message.from_user.id, amount=amount, category=category)
+        session.add(new_expense)
+        await session.commit()
+
+    await message.answer(
+        f"⚡ <b>Quick Save:</b> ${amount} for <b>{category}</b>\n",
+        parse_mode="HTML",
+        reply_markup=get_main_menu()
+    )
