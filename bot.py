@@ -6,7 +6,7 @@ from aiohttp import web
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from data.database import init_db
-from handlers import common, insights, expenses, statistics, export, budget 
+from handlers import common, expenses, statistics, export, budget ,insights
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
@@ -34,11 +34,11 @@ async def main():
 
     # 3. Register Routers
     dp.include_router(common.router)
-    dp.include_router(expenses.router)
     dp.include_router(statistics.router)
-    dp.include_router(export.router)
     dp.include_router(budget.router)
     dp.include_router(insights.router)
+    dp.include_router(export.router)
+    dp.include_router(expenses.router)
 
     # 4. Start the Fake Server (Background task)
     await start_web_server()
