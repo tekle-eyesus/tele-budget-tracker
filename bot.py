@@ -34,10 +34,11 @@ async def main():
 
     # 3. Register Routers
     dp.include_router(common.router)
-    dp.include_router(expenses.router)
     dp.include_router(statistics.router)
-    dp.include_router(export.router)
     dp.include_router(budget.router)
+    dp.include_router(export.router)
+    dp.include_router(expenses.router)
+    
     # 4. Start the Fake Server (Background task)
     await start_web_server()
 
