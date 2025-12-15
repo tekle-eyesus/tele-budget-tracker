@@ -28,7 +28,10 @@ This bot goes beyond simple message handling by implementing complex data proces
 *   **Data Visualization:** Generates on-the-fly Pie Charts using `Matplotlib` to analyze spending categories.
 *   **Dynamic PDF Receipts:** Uses `ReportLab` to draw pixel-perfect, thermal-printer style receipts.
 *   **Excel Export:** Uses `Pandas` to generate downloadable `.xlsx` reports for external analysis.
+*   **Smart Quick-Add** This allows the user to simply type: `15 Lunch` or `Taxi 20` directly in the chat, and the bot will automatically parse and save it.
 *   **Interactive UI:** Utilizes Inline Keyboards and Callbacks for deleting items and navigation.
+*   **Bulk Import via CSV** Allowing users to drag-and-drop a `.csv` file (like a bank statement or an export from another app) to instantly add hundreds of expenses.
+*   **Financial Projection & Forecasting** Calculates what will happen in the future based on the user's current spending habits
 
 ---
 
