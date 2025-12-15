@@ -51,31 +51,66 @@ async def generate_forecast(message: types.Message):
     top_category = max(category_totals, key=category_totals.get)
     top_cat_amount = category_totals[top_category]
 
-    # Report Text
+    progress_bar = ""
+    percent = 0
+    if budget > 0:
+        percent = (total_spent / budget) * 100
+        filled_slots = int(percent / 10)
+        if filled_slots > 10: filled_slots = 10
+        
+        # Color indicator based on health
+        health_icon = "🟢"
+        if percent > 80: health_icon = "🟠"
+        if percent >= 100: health_icon = "🔴"
+        
+        bar = "▓" * filled_slots + "░" * (10 - filled_slots)
+        progress_bar = f"{health_icon} <b>[{bar}] {percent:.0f}%</b>\n"
+    
     text = (
-        f"🔮 <b>End-of-Month Projection</b>\n"
-        f"📅 Date: {now.strftime('%B %d')}\n\n"
+        f"🔮 <b>FINANCIAL FORECAST</b>\n"
+        f"<i>Analysis for {now.strftime('%B %Y')}</i>\n"
+        f"──────────────────\n"
         
-        f"📉 <b>Current Status:</b>\n"
-        f"• Spent so far: <b>${total_spent:,.2f}</b>\n"
-        f"• Avg. Daily Spend: <b>${daily_average:,.2f}</b>\n\n"
-        
-        f"🚀 <b>Forecast:</b>\n"
-        f"At this rate, you will spend <b>${projected_total:,.2f}</b> by month end.\n"
+        f"<b>📊 Current Status</b>\n"
+        f"💸 Spent: <code>${total_spent:,.2f}</code>\n"
+        f"📅 Daily Avg: <code>${daily_average:,.2f}</code>\n"
+    )
+
+    if budget > 0:
+        text += f"🎯 Budget: <code>${budget:,.2f}</code>\n"
+        text += f"{progress_bar}\n"
+
+    text += (
+        f"<b>🚀 Month-End Projection</b>\n"
+        f"🔮 Estimate: <code>${projected_total:,.2f}</code>\n"
+        f"──────────────────\n"
     )
 
     if budget > 0:
         difference = budget - projected_total
-        text += f"🎯 <b>Budget Goal:</b> ${budget:,.2f}\n"
         
         if difference < 0:
-            text += f"⚠️ <b>WARNING:</b> You are on track to overspend by <b>${abs(difference):,.2f}</b>!\n"
-            text += f"💡 <b>Advice:</b> Try to spend less than <b>${(budget - total_spent) / (days_remaining if days_remaining > 0 else 1):,.2f}</b> per day for the rest of the month."
-        else:
-            text += f"✅ <b>Great Job!</b> You are on track to save <b>${difference:,.2f}</b>."
-    else:
-        text += "\n<i>(Set a /budget to get smart advice)</i>"
+            # Overspending Warning
+            daily_limit = (budget - total_spent) / (days_remaining if days_remaining > 0 else 1)
+            if daily_limit < 0: daily_limit = 0 
 
-    text += f"\n\n🍔 <b>Top Drain:</b> {top_category} (${top_cat_amount:,.2f})"
+            text += (
+                f"🚨 <b>CRITICAL WARNING</b>\n"
+                f"You are projected to overspend by <code>${abs(difference):,.2f}</code>!\n\n"
+                f"💡 <b>Fix It:</b> Cut your spending to \n"
+                f"👉 <code>${daily_limit:,.2f} / day</code>"
+            )
+        else:
+            # On Track
+            text += (
+                f"✅ <b>EXCELLENT</b>\n"
+                f"You are on track to save <code>${difference:,.2f}</code> this month.\n"
+                f"Keep it up!"
+            )
+    else:
+        text += "<i>💡 Tip: Use '🎯 Set Budget' to unlock smart financial advice.</i>"
+
+    # Top Drain
+    text += f"\n\n🔻 <b>Top Drain:</b> {top_category} (<code>${top_cat_amount:,.2f}</code>)"
 
     await message.answer(text, parse_mode="HTML")
