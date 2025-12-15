@@ -6,47 +6,45 @@ from data.database import AsyncSessionLocal, Expense
 router = Router()
 
 @router.message(F.document)
-async def handle_csv_upload(message: types.Message, bot: Bot):
+async def handle_document_upload(message: types.Message, bot: Bot):
     document = message.document
+    file_name = document.file_name.lower() if document.file_name else ""
 
-    # 1. Validation: Is it a CSV?
-    if not document.file_name.endswith('.csv'):
-        # Ignore non-CSV files (or warn user)
+    if not file_name.endswith('.csv'):
+        await message.reply(
+            "❌ <b>Unsupported File Type</b>\n\n"
+            "I can only import data from <b>.csv</b> files.\n"
+            "Please upload a CSV file or use /template to see the format.",
+            parse_mode="HTML"
+        )
         return 
 
     await message.reply("⏳ Processing CSV file...")
 
     try:
-        # 2. Download file to Memory (RAM)
         file_obj = io.BytesIO()
         file = await bot.get_file(document.file_id)
         await bot.download_file(file.file_path, file_obj)
         file_obj.seek(0)
 
-        # 3. Read with Pandas
-        # Expected columns: "amount", "category", "description" (optional)
         df = pd.read_csv(file_obj)
 
-        # Normalize column names to lowercase
         df.columns = [c.lower() for c in df.columns]
 
         required_cols = {'amount', 'category'}
         if not required_cols.issubset(df.columns):
-            await message.reply("❌ Error: CSV must have columns: `amount`, `category`")
+            await message.reply("❌ <b>Format Error:</b> CSV must have columns: <code>amount</code>, <code>category</code>", parse_mode="HTML")
             return
 
-        # 4. Prepare Data for DB
         expenses_to_add = []
         count = 0
         
         for _, row in df.iterrows():
-            # Basic validation
             try:
                 amt = float(row['amount'])
                 cat = str(row['category']).title()
                 desc = str(row['description']) if 'description' in row else None
                 
-                # Create Object
                 exp = Expense(
                     user_id=message.from_user.id,
                     amount=amt,
@@ -55,10 +53,9 @@ async def handle_csv_upload(message: types.Message, bot: Bot):
                 )
                 expenses_to_add.append(exp)
                 count += 1
-            except ValueError:
+            except (ValueError, TypeError):
                 continue # Skip bad rows
 
-        # 5. Bulk Insert
         if expenses_to_add:
             async with AsyncSessionLocal() as session:
                 session.add_all(expenses_to_add)
