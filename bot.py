@@ -6,7 +6,7 @@ from aiohttp import web
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from data.database import init_db
-from handlers import common, expenses, statistics, export, budget ,insights,import_data
+from handlers import common, expenses, statistics, export, budget ,insights,import_data,subscriptions 
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
@@ -35,6 +35,7 @@ async def main():
     # 3. Register Routers
     dp.include_router(common.router)
     dp.include_router(import_data.router)
+    dp.include_router(subscriptions.router)
     dp.include_router(statistics.router)
     dp.include_router(budget.router)
     dp.include_router(insights.router)

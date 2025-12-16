@@ -11,11 +11,13 @@ def get_main_menu():
         keyboard=[
             [KeyboardButton(text="💸 Add Expense")], 
             [KeyboardButton(text="📊 Stats"), KeyboardButton(text="🔮 Forecast")],
-            [KeyboardButton(text="📜 History"), KeyboardButton(text="🗑 Delete")],     
-            [KeyboardButton(text="🎯 Set Budget"), KeyboardButton(text="📥 Export")]
-        ],
-        resize_keyboard=True
-    )
+            [KeyboardButton(text="📜 History"), KeyboardButton(text="🔄 Subscriptions")],
+            [KeyboardButton(text="🎯 Set Budget"), KeyboardButton(text="🗑 Delete")],
+            [KeyboardButton(text="📥 Export")]
+            ],
+            resize_keyboard=True
+        )
+       
 
 def get_category_keyboard():
     categories = ["Food", "Transport", "Shopping", "Bills", "Other"]

@@ -2,7 +2,7 @@ from aiogram import Router, types, F
 import calendar
 from datetime import datetime
 from sqlalchemy import select
-from data.database import AsyncSessionLocal, Expense, User
+from data.database import AsyncSessionLocal, Expense, User, Subscription 
 
 router = Router()
 
@@ -12,10 +12,8 @@ async def generate_forecast(message: types.Message):
     now = datetime.utcnow()
     
     start_date = datetime(now.year, now.month, 1)
-    # Get the last day of the current month
     _, last_day = calendar.monthrange(now.year, now.month)
     
-    # Fetch Data
     async with AsyncSessionLocal() as session:
         query = select(Expense).where(
             Expense.user_id == user_id,
@@ -24,41 +22,51 @@ async def generate_forecast(message: types.Message):
         result = await session.execute(query)
         expenses = result.scalars().all()
 
-        # Get Budget
         user_result = await session.execute(select(User).where(User.user_id == user_id))
         user_settings = user_result.scalar_one_or_none()
 
-    if not expenses:
-        await message.answer("⚠️ Not enough data yet to make a prediction. Add some expenses first!")
+        sub_result = await session.execute(select(Subscription).where(Subscription.user_id == user_id))
+        subs = sub_result.scalars().all()
+
+    if not expenses and not subs and not user_settings:
+        await message.answer("⚠️ Not enough data yet. Set a /budget or add expenses/subscriptions first!")
         return
 
-    total_spent = sum(ex.amount for ex in expenses)
+    # Calculations
+    total_variable_spent = sum(ex.amount for ex in expenses)
+    fixed_costs = sum(s.amount for s in subs)
+    total_spent_so_far = total_variable_spent + fixed_costs
+    
     budget = user_settings.budget_limit if user_settings else 0.0
     
+    disposable_budget = budget - fixed_costs
+
     days_passed = now.day
     days_in_month = last_day
     days_remaining = days_in_month - days_passed
-    
     if days_passed == 0: days_passed = 1
 
-    daily_average = total_spent / days_passed
-    projected_total = daily_average * days_in_month
+    daily_average = total_variable_spent / days_passed
+    projected_variable = daily_average * days_in_month
     
-    # Find Top Spending Category
-    category_totals = {}
-    for ex in expenses:
-        category_totals[ex.category] = category_totals.get(ex.category, 0) + ex.amount
-    top_category = max(category_totals, key=category_totals.get)
-    top_cat_amount = category_totals[top_category]
+    total_projected = projected_variable + fixed_costs
+    
+    top_category = "None"
+    top_cat_amount = 0.0
+    if expenses:
+        category_totals = {}
+        for ex in expenses:
+            category_totals[ex.category] = category_totals.get(ex.category, 0) + ex.amount
+        top_category = max(category_totals, key=category_totals.get)
+        top_cat_amount = category_totals[top_category]
 
     progress_bar = ""
     percent = 0
     if budget > 0:
-        percent = (total_spent / budget) * 100
+        percent = (total_spent_so_far / budget) * 100
         filled_slots = int(percent / 10)
         if filled_slots > 10: filled_slots = 10
         
-        # Color indicator based on health
         health_icon = "🟢"
         if percent > 80: health_icon = "🟠"
         if percent >= 100: health_icon = "🔴"
@@ -72,45 +80,54 @@ async def generate_forecast(message: types.Message):
         f"──────────────────\n"
         
         f"<b>📊 Current Status</b>\n"
-        f"💸 Spent: <code>${total_spent:,.2f}</code>\n"
+        f"💸 Var. Spent: <code>${total_variable_spent:,.2f}</code>\n"
         f"📅 Daily Avg: <code>${daily_average:,.2f}</code>\n"
     )
 
     if budget > 0:
         text += f"🎯 Budget: <code>${budget:,.2f}</code>\n"
+        text += f"🔄 Fixed Subs: <code>${fixed_costs:,.2f}</code>\n"
         text += f"{progress_bar}\n"
 
     text += (
         f"<b>🚀 Month-End Projection</b>\n"
-        f"🔮 Estimate: <code>${projected_total:,.2f}</code>\n"
+        f"🔮 Estimate: <code>${total_projected:,.2f}</code>\n"
         f"──────────────────\n"
     )
 
+    # ADVISOR LOGIC
     if budget > 0:
-        difference = budget - projected_total
-        
-        if difference < 0:
-            # Overspending Warning
-            daily_limit = (budget - total_spent) / (days_remaining if days_remaining > 0 else 1)
-            if daily_limit < 0: daily_limit = 0 
-
-            text += (
+        if fixed_costs > budget:
+             text += (
                 f"🚨 <b>CRITICAL WARNING</b>\n"
-                f"You are projected to overspend by <code>${abs(difference):,.2f}</code>!\n\n"
-                f"💡 <b>Fix It:</b> Cut your spending to \n"
-                f"👉 <code>${daily_limit:,.2f} / day</code>"
+                f"Your Subscriptions (<code>${fixed_costs:,.2f}</code>) exceed your Budget!\n"
+                f"Increase your budget or cancel some subscriptions."
             )
         else:
-            # On Track
-            text += (
-                f"✅ <b>EXCELLENT</b>\n"
-                f"You are on track to save <code>${difference:,.2f}</code> this month.\n"
-                f"Keep it up!"
-            )
+            difference = budget - total_projected
+            
+            if difference < 0:
+                remaining_safe = disposable_budget - total_variable_spent
+                daily_limit = remaining_safe / (days_remaining if days_remaining > 0 else 1)
+                
+                if daily_limit < 0: daily_limit = 0 
+
+                text += (
+                    f"⚠️ <b>OVERSPEND WARNING</b>\n"
+                    f"Projected over: <code>${abs(difference):,.2f}</code>\n\n"
+                    f"💡 <b>Fix It:</b> Limit daily spending to:\n"
+                    f"👉 <code>${daily_limit:,.2f} / day</code>"
+                )
+            else:
+                text += (
+                    f"✅ <b>EXCELLENT</b>\n"
+                    f"On track to save: <code>${difference:,.2f}</code>\n"
+                    f"Safe daily spend: <code>${(disposable_budget - total_variable_spent) / (days_remaining if days_remaining > 0 else 1):,.2f}</code>"
+                )
     else:
         text += "<i>💡 Tip: Use '🎯 Set Budget' to unlock smart financial advice.</i>"
 
-    # Top Drain
-    text += f"\n\n🔻 <b>Top Drain:</b> {top_category} (<code>${top_cat_amount:,.2f}</code>)"
+    if top_cat_amount > 0:
+        text += f"\n\n🔻 <b>Top Drain:</b> {top_category} (<code>${top_cat_amount:,.2f}</code>)"
 
     await message.answer(text, parse_mode="HTML")
